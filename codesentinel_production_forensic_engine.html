@@ -1,0 +1,1675 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-black">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSentinel - Code Integrity Intelligence Platform</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js Library & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- JSZip for ZIP extraction in browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            black: '#050609',
+                            card: '#0c0f17',
+                            border: '#1a2234',
+                            yellow: '#facc15',
+                            'yellow-hover': '#eab308',
+                            blue: '#3b82f6',
+                            'blue-hover': '#2563eb',
+                            white: '#ffffff',
+                            muted: '#94a3b8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #050609;
+            background-image: 
+                radial-gradient(circle at 50% 15%, rgba(250, 204, 21, 0.08) 0%, rgba(5, 6, 9, 0.95) 75%),
+                radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.06) 0%, transparent 60%),
+                linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+            color: #f8fafc;
+        }
+
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .bg-yellow-theme {
+            background: rgba(26, 24, 7, 0.85);
+            border: 1px solid rgba(234, 179, 8, 0.3);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 0 25px rgba(234, 179, 8, 0.08);
+        }
+
+        .text-glow-yellow {
+            text-shadow: 0 0 12px rgba(250, 204, 21, 0.6);
+        }
+
+        .text-glow-blue {
+            text-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+        }
+
+        .active-tab {
+            background: rgba(250, 204, 21, 0.15);
+            color: #facc15;
+            border: 1px solid rgba(250, 204, 21, 0.3);
+        }
+
+        .inactive-tab {
+            color: #94a3b8;
+        }
+
+        .inactive-tab:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #050609;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col overflow-x-hidden text-slate-100 min-h-screen">
+
+    <!-- Top Header Bar -->
+    <header class="border-b border-slate-800/80 bg-black/80 backdrop-blur-md sticky top-0 z-50 px-4 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-amber-500 text-black font-extrabold text-xl flex items-center justify-center shadow-lg shadow-yellow-500/20">
+                    <i class="fa-solid fa-shield-halved text-black"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-extrabold text-xl tracking-tight text-white">CODE<span class="text-yellow-400">SENTINEL</span></span>
+                        <span class="text-[10px] code-font px-2 py-0.5 rounded bg-blue-950/80 text-blue-400 border border-blue-500/30 font-semibold tracking-wider uppercase">
+                            v2.4 Gemini Forensic AI
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">Automated AST & Semantic Plagiarism Intelligence</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Workspace Switcher Tabs -->
+        <div class="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs font-medium shadow-inner">
+            <button id="tab-btn-network" onclick="switchView('network')" class="px-4 py-2 rounded-lg active-tab flex items-center gap-2 transition-all cursor-pointer">
+                <i class="fa-solid fa-cubes text-yellow-400"></i>
+                <span>3D Network</span>
+            </button>
+            <button id="tab-btn-ingestion" onclick="switchView('ingestion')" class="px-4 py-2 rounded-lg inactive-tab flex items-center gap-2 transition-all cursor-pointer">
+                <i class="fa-solid fa-file-zipper text-blue-400"></i>
+                <span>ZIP / Ingestion Pool</span>
+                <span id="ingestionCountBadge" class="px-1.5 py-0.2 text-[10px] rounded-full bg-slate-800 text-yellow-400 border border-yellow-500/30">8</span>
+            </button>
+            <button id="tab-btn-forensics" onclick="switchView('forensics')" class="px-4 py-2 rounded-lg inactive-tab flex items-center gap-2 transition-all cursor-pointer">
+                <i class="fa-solid fa-microscope text-amber-400"></i>
+                <span>Forensic Code Inspector</span>
+                <span id="flaggedCountBadge" class="px-1.5 py-0.2 text-[10px] rounded-full bg-slate-800 text-blue-400 border border-blue-500/30">2</span>
+            </button>
+        </div>
+
+        <!-- Right Engine Controls -->
+        <div class="flex items-center gap-3">
+            <button onclick="toggleAiDrawer()" class="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-yellow-400 border border-yellow-500/30 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md">
+                <i class="fa-solid fa-robot text-yellow-400"></i>
+                <span>Ask Sentinel AI</span>
+            </button>
+            <button id="runAnalysisBtn" onclick="triggerAnalysis()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-yellow-500/25 cursor-pointer">
+                <i class="fa-solid fa-bolt text-black"></i>
+                <span id="runBtnText">Run Forensic Engine</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 p-4 lg:p-8 max-w-7xl mx-auto w-full flex flex-col gap-6">
+        
+        <!-- Interactive Detection Process Pipeline -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                <div class="flex items-center gap-2.5">
+                    <div class="p-1.5 rounded-lg bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs">
+                        <i class="fa-solid fa-diagram-project"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-white text-sm tracking-tight">Forensic Detection Pipeline Stage Matrix</h3>
+                        <p class="text-[11px] text-slate-400">Click any stage to isolate pipeline node layers in 3D graph space</p>
+                    </div>
+                </div>
+                <div id="pipelineStatusBadge" class="text-[11px] code-font font-semibold px-2.5 py-1 rounded-md bg-blue-950/80 text-blue-400 border border-blue-500/30">
+                    STATUS: READY (PIPELINE LIVE)
+                </div>
+            </div>
+
+            <!-- Pipeline Steps Horizontal Flow Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-1.5 text-center text-xs font-medium">
+                <button onclick="selectPipelineStep(0)" id="step-btn-0" class="pipeline-step-btn p-1.5 rounded-xl bg-yellow-500/20 border border-yellow-400 text-yellow-400 hover:border-yellow-400 transition-all flex flex-col items-center justify-between gap-1 group cursor-pointer">
+                    <span class="text-[9px] code-font text-slate-400 group-hover:text-yellow-400">0. SUBMIT</span>
+                    <i class="fa-solid fa-file-code text-xs my-0.5"></i>
+                    <span class="text-[9px] font-bold text-slate-200">Submissions</span>
+                    <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-0.5">
+                        <div id="step-bar-0" class="bg-yellow-400 h-full w-full transition-all duration-300"></div>
+                    </div>
+                </button>
+
+                <button onclick="selectPipelineStep(1)" id="step-btn-1" class="pipeline-step-btn p-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 hover:border-slate-700 transition-all flex flex-col items-center justify-between gap-1 group cursor-pointer">
+                    <span class="text-[9px] code-font text-slate-400 group-hover:text-yellow-400">1. NORM</span>
+                    <i class="fa-solid fa-broom text-xs my-0.5"></i>
+                    <span class="text-[9px] font-bold text-slate-300">Clean AST</span>
+                    <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-0.5">
+                        <div id="step-bar-1" class="bg-slate-600 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </button>
+
+                <button onclick="selectPipelineStep(2)" id="step-btn-2" class="pipeline-step-btn p-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 hover:border-slate-700 transition-all flex flex-col items-center justify-between gap-1 group cursor-pointer">
+                    <span class="text-[9px] code-font text-slate-400 group-hover:text-yellow-400">2. TOKEN</span>
+                    <i class="fa-solid fa-fingerprint text-xs my-0.5"></i>
+                    <span class="text-[9px] font-bold text-slate-300">Fingerprint</span>
+                    <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-0.5">
+                        <div id="step-bar-2" class="bg-slate-600 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </button>
+
+                <button onclick="selectPipelineStep(3)" id="step-btn-3" class="pipeline-step-btn p-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 hover:border-slate-700 transition-all flex flex-col items-center justify-between gap-1 group cursor-pointer">
+                    <span class="text-[9px] code-font text-slate-400 group-hover:text-yellow-400">3. LSH</span>
+                    <i class="fa-solid fa-sitemap text-xs my-0.5"></i>
+                    <span class="text-[9px] font-bold text-slate-300">MinHash Pairs</span>
+                    <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-0.5">
+                        <div id="step-bar-3" class="bg-slate-600 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </button>
+
+                <button onclick="selectPipelineStep(4)" id="step-btn-4" class="pipeline-step-btn p-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 hover:border-slate-700 transition-all flex flex-col items-center justify-between gap-1 group cursor-pointer">
+                    <span class="text-[9px] code-font text-slate-400 group-hover:text-yellow-400">4. AST</span>
+                    <i class="fa-solid fa-code-branch text-xs my-0.5"></i>
+                    <span class="text-[9px] font-bold text-slate-300">AST Structural</span>
+                    <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-0.5">
+                        <div id="step-bar-4" class="bg-slate-600 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </button>
+
+                <button onclick="selectPipelineStep(5)" id="step-btn-5" class="pipeline-step-btn p-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 hover:border-slate-700 transition-all flex flex-col items-center justify-between gap-1 group cursor-pointer">
+                    <span class="text-[9px] code-font text-slate-400 group-hover:text-yellow-400">5. EMBED</span>
+                    <i class="fa-solid fa-brain text-xs my-0.5"></i>
+                    <span class="text-[9px] font-bold text-slate-300">ANN Embeds</span>
+                    <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-0.5">
+                        <div id="step-bar-5" class="bg-slate-600 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </button>
+
+                <button onclick="selectPipelineStep(6)" id="step-btn-6" class="pipeline-step-btn p-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 hover:border-slate-700 transition-all flex flex-col items-center justify-between gap-1 group cursor-pointer">
+                    <span class="text-[9px] code-font text-slate-400 group-hover:text-yellow-400">6. CONTEXT</span>
+                    <i class="fa-solid fa-layer-group text-xs my-0.5"></i>
+                    <span class="text-[9px] font-bold text-slate-300">Context Mesh</span>
+                    <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-0.5">
+                        <div id="step-bar-6" class="bg-slate-600 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </button>
+
+                <button onclick="selectPipelineStep(7)" id="step-btn-7" class="pipeline-step-btn p-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 hover:border-slate-700 transition-all flex flex-col items-center justify-between gap-1 group cursor-pointer">
+                    <span class="text-[9px] code-font text-slate-400 group-hover:text-yellow-400">7. AI</span>
+                    <i class="fa-solid fa-wand-magic-sparkles text-xs my-0.5 text-yellow-400"></i>
+                    <span class="text-[9px] font-bold text-slate-300">Gemini LLM</span>
+                    <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-0.5">
+                        <div id="step-bar-7" class="bg-slate-600 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </button>
+
+                <button onclick="selectPipelineStep(8)" id="step-btn-8" class="pipeline-step-btn p-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 hover:border-slate-700 transition-all flex flex-col items-center justify-between gap-1 group cursor-pointer">
+                    <span class="text-[9px] code-font text-slate-400 group-hover:text-yellow-400">8. PRIORITY</span>
+                    <i class="fa-solid fa-triangle-exclamation text-xs my-0.5 text-yellow-400"></i>
+                    <span class="text-[9px] font-bold text-slate-300">Risk Matrix</span>
+                    <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-0.5">
+                        <div id="step-bar-8" class="bg-slate-600 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </button>
+
+                <button onclick="selectPipelineStep(9)" id="step-btn-9" class="pipeline-step-btn p-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 hover:border-slate-700 transition-all flex flex-col items-center justify-between gap-1 group cursor-pointer">
+                    <span class="text-[9px] code-font text-yellow-400">9. REPORT</span>
+                    <i class="fa-solid fa-gauge-high text-xs text-yellow-400 my-0.5"></i>
+                    <span class="text-[9px] font-bold text-yellow-400">Tutor View</span>
+                    <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-0.5">
+                        <div id="step-bar-9" class="bg-yellow-400 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW 1: 3D NETWORK GRAPH VIEW -->
+        <div id="view-network" class="space-y-6">
+            <!-- Hero Title & Statistics Banner -->
+            <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-slate-800 pb-6">
+                <div class="space-y-2">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs font-semibold uppercase tracking-wider">
+                        <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+                        Explainable Code Integrity Forensics
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+                        Submission Intelligence <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-amber-300 to-blue-400">Network</span>
+                    </h1>
+                    <p class="text-slate-400 max-w-2xl text-sm leading-relaxed">
+                        Interactive 3D graph representing student submission nodes, structural AST equivalence, MinHash LSH candidate clusters, and Gemini AI priority analysis.
+                    </p>
+                </div>
+
+                <!-- Dashboard Stats Summary Cards -->
+                <div class="grid grid-cols-3 gap-3 w-full lg:w-auto">
+                    <div class="bg-slate-900/90 border border-blue-500/20 rounded-2xl p-4 flex flex-col justify-between hover:border-blue-500/50 transition-all">
+                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Submissions</span>
+                        <div class="flex items-baseline gap-2 mt-2">
+                            <span id="statSubmissions" class="text-2xl font-black text-white">8</span>
+                            <span class="text-xs text-blue-400 font-medium">Loaded</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/90 border border-blue-500/20 rounded-2xl p-4 flex flex-col justify-between hover:border-blue-500/50 transition-all">
+                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Candidate Pairs</span>
+                        <div class="flex items-baseline gap-2 mt-2">
+                            <span id="statPairs" class="text-2xl font-black text-blue-400">3</span>
+                            <span class="text-[10px] text-slate-400 code-font">MinHash LSH</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/90 border border-yellow-500/30 bg-yellow-950/10 rounded-2xl p-4 flex flex-col justify-between hover:border-yellow-500/60 transition-all">
+                        <span class="text-[11px] font-bold text-yellow-400 uppercase tracking-wider">Active Cases</span>
+                        <div class="flex items-baseline gap-2 mt-2">
+                            <span id="statFlagged" class="text-2xl font-black text-yellow-400">2</span>
+                            <span class="text-xs text-yellow-300 font-medium">High Alert</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Interactive 3D Visualization Canvas Container -->
+            <div class="relative bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[580px]">
+                
+                <!-- Canvas Overlay Header & Controls -->
+                <div class="absolute top-4 left-4 right-4 z-10 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+                    <!-- Legend -->
+                    <div class="pointer-events-auto flex items-center gap-4 bg-slate-950/90 backdrop-blur-md border border-slate-800 px-4 py-2 rounded-xl text-xs shadow-lg">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-blue-500 shadow-sm shadow-blue-500"></span>
+                            <span class="text-slate-200 font-medium">Clean Node</span>
+                        </div>
+                        <div class="w-px h-3 bg-slate-800"></div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-yellow-400 shadow-sm shadow-yellow-400"></span>
+                            <span class="text-slate-200 font-medium">Flagged Pair</span>
+                        </div>
+                        <div class="w-px h-3 bg-slate-800 hidden sm:block"></div>
+                        <span class="text-slate-400 text-[11px] hidden sm:inline"><i class="fa-solid fa-arrows-spin text-blue-400 mr-1"></i> Drag to rotate • Scroll to zoom • Click node to inspect</span>
+                    </div>
+
+                    <!-- Canvas Action Buttons -->
+                    <div class="pointer-events-auto flex items-center gap-2">
+                        <button onclick="resetCamera()" class="p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 transition-all cursor-pointer shadow-md" title="Reset View">
+                            <i class="fa-solid fa-arrows-to-dot text-yellow-400"></i>
+                        </button>
+                        <button onclick="toggleNodePulse()" class="px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-blue-400 border border-slate-700/80 text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-md">
+                            <i class="fa-solid fa-wave-square text-blue-400"></i>
+                            <span>Animate AST Links</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3D Three.js Viewport Element -->
+                <div id="threejs-container" class="w-full h-full cursor-grab active:cursor-grabbing bg-slate-950"></div>
+
+                <!-- Active Stage Pipeline Visual HUD Banner inside 3D Canvas -->
+                <div id="stageHudBanner" class="absolute top-16 left-4 bg-black/90 border border-blue-500/40 rounded-xl px-3.5 py-2 backdrop-blur-md flex items-center gap-3 text-xs z-10">
+                    <span class="w-2.5 h-2.5 rounded-full bg-blue-400 animate-ping"></span>
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase tracking-wider block">3D Stage Layer View</span>
+                        <span id="stageHudTitle" class="font-bold text-white">Stage 0: Full Submission Ingestion Graph</span>
+                    </div>
+                </div>
+
+                <!-- Bottom Floating Node Details Panel Overlay -->
+                <div id="nodeInfoBox" class="absolute bottom-4 left-4 right-4 sm:right-auto sm:max-w-md bg-slate-950/95 border border-yellow-500/40 rounded-xl p-4 backdrop-blur-md text-xs space-y-2 shadow-2xl transition-all">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-ping"></span>
+                            <span id="nodeInfoTitle" class="font-bold text-white text-sm">Cluster Case #PAIR-8842</span>
+                        </div>
+                        <span id="nodeInfoScore" class="px-2 py-0.5 rounded bg-yellow-400/20 text-yellow-300 font-bold border border-yellow-400/40 text-[10px]">98.4% Similarity</span>
+                    </div>
+                    <p id="nodeInfoDesc" class="text-slate-300 leading-relaxed">
+                        High AST structural equivalence detected between <strong class="text-white">student_1_dijkstra.py</strong> and <strong class="text-white">student_4_dijkstra_obfuscated.py</strong>.
+                    </p>
+                    <div class="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+                        <span id="nodeInfoAlgo">Algorithm: MinHash LSH + Gemini AI</span>
+                        <button onclick="openAstModal('pair_1')" class="text-blue-400 hover:text-blue-300 font-semibold underline cursor-pointer">Inspect AST Diff &rarr;</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Secondary Grid Panel: Case Forensics & Flagged Submissions -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Flagged Candidates List -->
+                <div class="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-yellow-400"></i>
+                            <h2 class="font-bold text-white text-base">Top Flagged Similarity Candidates</h2>
+                        </div>
+                        <span class="text-xs text-slate-400">Sorted by AST structural equivalence</span>
+                    </div>
+
+                    <div id="flaggedPairsContainer" class="space-y-3">
+                        <!-- Dynamic flagged pairs inserted by JS -->
+                    </div>
+                </div>
+
+                <!-- Quick Engine Stats & Configuration -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 border-b border-slate-800 pb-3 mb-4">
+                            <i class="fa-solid fa-sliders text-blue-400"></i>
+                            <h2 class="font-bold text-white text-base">Forensic Sensitivity Controls</h2>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-slate-300">MinHash LSH Threshold</span>
+                                    <span id="threshLshVal" class="text-yellow-400 font-bold">70%</span>
+                                </div>
+                                <input type="range" id="threshLshInput" min="50" max="95" value="70" oninput="updateThresholds()" class="w-full accent-yellow-400 bg-slate-800 rounded-lg h-2 cursor-pointer">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-slate-300">AST Structural Depth</span>
+                                    <span id="threshDepthVal" class="text-blue-400 font-bold">Level 4</span>
+                                </div>
+                                <input type="range" id="threshDepthInput" min="1" max="10" value="4" oninput="updateThresholds()" class="w-full accent-blue-500 bg-slate-800 rounded-lg h-2 cursor-pointer">
+                            </div>
+
+                            <div class="pt-2">
+                                <div class="p-3 rounded-xl bg-black border border-slate-800 text-xs space-y-1">
+                                    <div class="text-slate-400 font-medium">Detection Engine Mode</div>
+                                    <div class="text-white font-bold flex items-center justify-between">
+                                        <span>AST Normalization + Gemini 3 Flash</span>
+                                        <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-800">
+                        <button onclick="triggerAnalysis()" class="w-full py-2.5 rounded-xl border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black font-bold text-xs uppercase tracking-wider transition-all cursor-pointer">
+                            Re-Compute Network Graph
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: ZIP / BATCH INGESTION HUB -->
+        <div id="view-ingestion" class="hidden space-y-6">
+            <div class="border-b border-slate-800 pb-4">
+                <h1 class="text-2xl font-bold text-white">Batch Ingestion & File Parser</h1>
+                <p class="text-slate-400 text-xs mt-1">Upload code files (`.py`, `.cpp`, `.js`, `.java`) or ZIP archives containing entire student cohorts.</p>
+            </div>
+
+            <!-- Upload Area -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- File Drop Zone -->
+                <div class="md:col-span-2 border-2 border-dashed border-slate-700 hover:border-yellow-400/80 bg-slate-900/50 rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 transition-all cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                    <div class="w-16 h-16 rounded-2xl bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-2xl flex items-center justify-center">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-bold text-base">Drag & Drop Code Files or ZIP Archive</h3>
+                        <p class="text-slate-400 text-xs mt-1">Supports multi-file batch uploads (`.zip`, `.py`, `.cpp`, `.js`)</p>
+                    </div>
+                    <input type="file" id="fileInput" multiple accept=".py,.cpp,.js,.java,.txt,.zip" class="hidden" onchange="handleFileUpload(event)">
+                    <button class="px-4 py-2 bg-yellow-400 text-black font-bold text-xs rounded-xl hover:bg-yellow-300 transition-all cursor-pointer">
+                        Browse Files
+                    </button>
+                </div>
+
+                <!-- Custom Snippet Adder -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-3 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-code text-blue-400"></i>
+                            <span>Add Single Snippet</span>
+                        </h3>
+                        <input id="newFileNameInput" type="text" placeholder="filename.py" class="w-full bg-black border border-slate-700 rounded-xl px-3 py-2 text-xs text-white code-font focus:outline-none focus:border-yellow-400">
+                        <textarea id="newCodeArea" rows="5" placeholder="# Paste source code here..." class="w-full bg-black border border-slate-700 rounded-xl p-3 text-xs text-slate-200 code-font focus:outline-none focus:border-yellow-400 resize-none"></textarea>
+                    </div>
+                    <button onclick="addManualSnippet()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer">
+                        Add to Ingestion Pool
+                    </button>
+                </div>
+            </div>
+
+            <!-- Ingested Files Data Table -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h2 class="font-bold text-white text-base flex items-center gap-2">
+                        <i class="fa-solid fa-folder-tree text-yellow-400"></i>
+                        <span>Ingested Submissions Pool</span>
+                    </h2>
+                    <button onclick="clearAllSubmissions()" class="text-xs text-slate-400 hover:text-red-400 transition-all cursor-pointer">
+                        <i class="fa-solid fa-trash mr-1"></i> Clear All
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider code-font">
+                            <tr>
+                                <th class="p-3 rounded-l-lg">Submission Filename</th>
+                                <th class="p-3">Language</th>
+                                <th class="p-3">Token Count</th>
+                                <th class="p-3">AST Nodes</th>
+                                <th class="p-3 rounded-r-lg text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ingestedTableBody" class="divide-y divide-slate-800/60 code-font">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: FORENSIC WORKSPACE -->
+        <div id="view-forensics" class="hidden space-y-6">
+            <div class="border-b border-slate-800 pb-4 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-white">Forensic Code Inspector</h1>
+                    <p class="text-slate-400 text-xs mt-1">Deep side-by-side AST comparison, variable renaming mapping, and Gemini AI structural similarity analysis.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <select id="forensicPairSelector" onchange="loadSelectedForensicPair()" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-yellow-400 code-font font-bold focus:outline-none cursor-pointer">
+                        <!-- Options generated dynamically -->
+                    </select>
+                </div>
+            </div>
+
+            <!-- Code Side-by-Side Comparison -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col space-y-3">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <span id="forensicFileTitleA" class="code-font text-xs text-yellow-400 font-bold">student_1_dijkstra.py</span>
+                        <span class="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800">File A</span>
+                    </div>
+                    <pre id="forensicCodeA" class="code-font text-xs text-slate-200 overflow-x-auto p-3 bg-black rounded-xl border border-slate-900 h-80 leading-relaxed"><code># Loading code...</code></pre>
+                </div>
+
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col space-y-3">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <span id="forensicFileTitleB" class="code-font text-xs text-blue-400 font-bold">student_4_dijkstra_obfuscated.py</span>
+                        <span class="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800">File B</span>
+                    </div>
+                    <pre id="forensicCodeB" class="code-font text-xs text-slate-200 overflow-x-auto p-3 bg-black rounded-xl border border-slate-900 h-80 leading-relaxed"><code># Loading code...</code></pre>
+                </div>
+            </div>
+
+            <!-- Structural Breakdown Matrix -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-3">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Token Jaccard Match</span>
+                    <div id="metricJaccard" class="text-3xl font-black text-yellow-400">96.2%</div>
+                    <p class="text-xs text-slate-400">Identical token n-gram shingle overlap after variable abstraction.</p>
+                </div>
+
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-3">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">AST Control Flow Distance</span>
+                    <div id="metricAst" class="text-3xl font-black text-blue-400">98.4%</div>
+                    <p class="text-xs text-slate-400">Identical while/for loop nestings and conditional branch trees.</p>
+                </div>
+
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-3">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Gemini AI Confidence</span>
+                    <div id="metricGemini" class="text-3xl font-black text-white">High Alert</div>
+                    <p class="text-xs text-slate-400">Identifier obfuscation detected with identical execution outcome.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- AST Comparison & Gemini Forensic Modal -->
+    <div id="astCompareModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-slate-950 border border-yellow-500/30 rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            <!-- Modal Header -->
+            <div class="p-4 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-yellow-400/10 border border-yellow-400/40 text-yellow-400 flex items-center justify-center">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-bold text-base flex items-center gap-2">
+                            <span>Forensic AST Comparison Inspector</span>
+                            <span id="modalPairBadge" class="text-xs font-mono px-2 py-0.5 rounded bg-yellow-400/20 text-yellow-300 border border-yellow-400/30">student_1 vs student_4</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Powered by Gemini 3 Flash & Audio Synthesis Engine</p>
+                    </div>
+                </div>
+                <button onclick="closeAstModal()" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="flex-1 overflow-y-auto p-5 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-black border border-slate-800 rounded-xl p-3 flex flex-col">
+                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                            <span id="fileNameA" class="code-font text-xs text-yellow-400 font-bold">fileA.py</span>
+                            <span class="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800">File A</span>
+                        </div>
+                        <pre id="codeViewA" class="code-font text-xs text-slate-300 overflow-x-auto p-2 bg-slate-950/80 rounded border border-slate-900 h-48"><code># Code...</code></pre>
+                    </div>
+
+                    <div class="bg-black border border-slate-800 rounded-xl p-3 flex flex-col">
+                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                            <span id="fileNameB" class="code-font text-xs text-blue-400 font-bold">fileB.py</span>
+                            <span class="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800">File B</span>
+                        </div>
+                        <pre id="codeViewB" class="code-font text-xs text-slate-300 overflow-x-auto p-2 bg-slate-950/80 rounded border border-slate-900 h-48"><code># Code...</code></pre>
+                    </div>
+                </div>
+
+                <!-- Gemini AI Analysis Section -->
+                <div class="bg-slate-900/90 border border-yellow-500/30 rounded-xl p-5 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-brain text-yellow-400"></i>
+                            <h4 class="font-bold text-white text-sm">Gemini AI Semantic & Forensic Breakdown Report</h4>
+                        </div>
+                        
+                        <div class="flex items-center gap-2">
+                            <!-- Gemini Audio Readout Button -->
+                            <button id="ttsAudioBtn" onclick="runGeminiAudioBriefing()" disabled class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 text-xs font-semibold flex items-center gap-2 transition-all cursor-not-allowed">
+                                <i class="fa-solid fa-volume-high"></i>
+                                <span id="ttsBtnText">Listen Audio Briefing</span>
+                            </button>
+                            
+                            <!-- Gemini Infographic Generation Button -->
+                            <button id="genInfographicBtn" onclick="runGeminiInfographic()" disabled class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 text-xs font-semibold flex items-center gap-2 transition-all cursor-not-allowed">
+                                <i class="fa-solid fa-image"></i>
+                                <span id="infoBtnText">Generate Visual Diagram</span>
+                            </button>
+
+                            <!-- Run LLM Analysis Button -->
+                            <button id="runGeminiReportBtn" onclick="runGeminiForensicAnalysis()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-yellow-400 to-amber-500 text-black hover:brightness-110 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-yellow-400/20">
+                                <i class="fa-solid fa-sparkles"></i>
+                                <span>Generate Gemini Breakdown</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Gemini AI Markdown Response Container -->
+                    <div id="geminiReportContainer" class="text-xs text-slate-300 leading-relaxed min-h-[120px] bg-black/60 rounded-xl p-4 border border-slate-800/80">
+                        <div class="flex flex-col items-center justify-center py-6 text-center text-slate-400 space-y-2">
+                            <i class="fa-solid fa-robot text-2xl text-slate-600"></i>
+                            <p>Click <strong>"Generate Gemini Breakdown"</strong> to perform real-time forensic LLM AST comparison.</p>
+                        </div>
+                    </div>
+
+                    <!-- Generated Image Infographic Display Area -->
+                    <div id="infographicContainer" class="hidden pt-3 border-t border-slate-800">
+                        <div class="text-xs font-bold text-yellow-400 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-diagram-nested"></i>
+                            <span>Generated Gemini Forensic Proof Infographic</span>
+                        </div>
+                        <div id="infographicWrapper" class="w-full bg-black rounded-xl overflow-hidden border border-slate-800 flex justify-center p-2 min-h-[180px] items-center">
+                            <!-- Dynamic image inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between">
+                <span class="text-xs text-slate-400">Model: Gemini 3 Flash Intelligence Engine</span>
+                <button onclick="closeAstModal()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs cursor-pointer">
+                    Close Inspector
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Assistant Drawer -->
+    <div id="aiChatDrawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-slate-950 border-l border-yellow-500/30 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col">
+        <div class="p-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-yellow-400/10 border border-yellow-400/40 text-yellow-400 flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-robot text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-white text-sm">Sentinel AI Assistant</h3>
+                    <p class="text-[10px] text-yellow-400 code-font">Gemini 3 Flash Forensic Model</p>
+                </div>
+            </div>
+            <button onclick="toggleAiDrawer()" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 cursor-pointer">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <div class="p-3 bg-slate-900/50 border-b border-slate-800 flex flex-wrap gap-1.5 text-[11px]">
+            <button onclick="sendPresetPrompt('Explain variable renaming obfuscation techniques used in student assignments.')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all cursor-pointer">
+                💡 Variable Obfuscation
+            </button>
+            <button onclick="sendPresetPrompt('Draft an official academic integrity inquiry notice for flagged candidate pairs.')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all cursor-pointer">
+                ✉️ Honor Code Notice
+            </button>
+        </div>
+
+        <div id="chatMessageLog" class="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 space-y-1">
+                <div class="font-bold text-yellow-400 flex items-center gap-1.5">
+                    <i class="fa-solid fa-robot"></i>
+                    <span>Sentinel AI</span>
+                </div>
+                <p>Hello! I am your AI Code Forensic Assistant powered by Gemini. Ask me to analyze submissions, explain AST matching algorithms, or draft academic integrity reports.</p>
+            </div>
+        </div>
+
+        <form onsubmit="handleChatSubmit(event)" class="p-3 border-t border-slate-800 bg-slate-900/90 flex gap-2">
+            <input id="chatInput" type="text" placeholder="Ask Sentinel AI about submission integrity..." class="flex-1 bg-black border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-yellow-400">
+            <button type="submit" class="px-4 py-2 bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+
+    <!-- JAVASCRIPT CORE ENGINE -->
+    <script>
+/* Global Submissions Data State */
+let submissionsPool = [
+    {
+        id: 'sub_1',
+        filename: 'student_1_dijkstra.py',
+        language: 'Python',
+        tokens: 342,
+        astNodes: 128,
+        code: `def dijkstra(graph, start):\n    distances = {node: float('infinity') for node in graph}\n    distances[start] = 0\n    unvisited = list(graph.keys())\n    \n    while unvisited:\n        current = min(unvisited, key=lambda node: distances[node])\n        if distances[current] == float('infinity'):\n            break\n            \n        for neighbor, weight in graph[current].items():\n            new_dist = distances[current] + weight\n            if new_dist < distances[neighbor]:\n                distances[neighbor] = new_dist\n                \n        unvisited.remove(current)\n    return distances`
+    },
+    {
+        id: 'sub_2',
+        filename: 'student_2_binary_search.py',
+        language: 'Python',
+        tokens: 180,
+        astNodes: 64,
+        code: `def binary_search(arr, target):\n    low, high = 0, len(arr) - 1\n    while low <= high:\n        mid = (low + high) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            low = mid + 1\n        else:\n            high = mid - 1\n    return -1`
+    },
+    {
+        id: 'sub_3',
+        filename: 'student_3_quick_sort.cpp',
+        language: 'C++',
+        tokens: 410,
+        astNodes: 156,
+        code: `#include <vector>\nusing namespace std;\n\nint partition(vector<int>& arr, int low, int high) {\n    int pivot = arr[high];\n    int i = (low - 1);\n    for (int j = low; j < high; j++) {\n        if (arr[j] <= pivot) {\n            i++;\n            swap(arr[i], arr[j]);\n        }\n    }\n    swap(arr[i + 1], arr[high]);\n    return (i + 1);\n}\n\nvoid quickSort(vector<int>& arr, int low, int high) {\n    if (low < high) {\n        int pi = partition(arr, low, high);\n        quickSort(arr, low, pi - 1);\n        quickSort(arr, pi + 1, high);\n    }\n}`
+    },
+    {
+        id: 'sub_4',
+        filename: 'student_4_dijkstra_obfuscated.py',
+        language: 'Python',
+        tokens: 348,
+        astNodes: 128,
+        code: `def calc_shortest_paths(g, src_node):\n    # Obfuscated variable names but identical AST structure\n    d_map = {n: float('inf') for n in g}\n    d_map[src_node] = 0\n    queue_nodes = list(g.keys())\n    \n    while len(queue_nodes) > 0:\n        curr_item = min(queue_nodes, key=lambda x: d_map[x])\n        if d_map[curr_item] == float('inf'):\n            break\n            \n        for nxt, cost in g[curr_item].items():\n            accum_cost = d_map[curr_item] + cost\n            if accum_cost < d_map[nxt]:\n                d_map[nxt] = accum_cost\n                \n        queue_nodes.remove(curr_item)\n    return d_map`
+    },
+    {
+        id: 'sub_5',
+        filename: 'student_5_bfs.py',
+        language: 'Python',
+        tokens: 210,
+        astNodes: 78,
+        code: `from collections import deque\n\ndef bfs(graph, start_node):\n    visited = set([start_node])\n    queue = deque([start_node])\n    order = []\n    while queue:\n        node = queue.popleft()\n        order.append(node)\n        for neighbor in graph[node]:\n            if neighbor not in visited:\n                visited.add(neighbor)\n                queue.append(neighbor)\n    return order`
+    },
+    {
+        id: 'sub_6',
+        filename: 'student_6_dijkstra_copy.py',
+        language: 'Python',
+        tokens: 339,
+        astNodes: 126,
+        code: `def shortest_path(adj, source):\n    dist = {}\n    for k in adj:\n        dist[k] = 99999999\n    dist[source] = 0\n    rem = [k for k in adj]\n    while rem:\n        u = min(rem, key=lambda x: dist[x])\n        if dist[u] >= 99999999:\n            break\n        for v, w in adj[u].items():\n            if dist[u] + w < dist[v]:\n                dist[v] = dist[u] + w\n        rem.remove(u)\n    return dist`
+    },
+    {
+        id: 'sub_7',
+        filename: 'student_7_merge_sort.js',
+        language: 'JavaScript',
+        tokens: 290,
+        astNodes: 110,
+        code: `function mergeSort(arr) {\n    if (arr.length <= 1) return arr;\n    const mid = Math.floor(arr.length / 2);\n    const left = mergeSort(arr.slice(0, mid));\n    const right = mergeSort(arr.slice(mid));\n    return merge(left, right);\n}`
+    },
+    {
+        id: 'sub_8',
+        filename: 'student_8_fibonacci.py',
+        language: 'Python',
+        tokens: 115,
+        astNodes: 42,
+        code: `def fibonacci(n):\n    if n <= 0: return 0\n    if n == 1: return 1\n    a, b = 0, 1\n    for _ in range(2, n + 1):\n        a, b = b, a + b\n    return b`
+    }
+];
+
+let candidatePairs = [
+    {
+        id: 'pair_1',
+        subA: 'sub_1',
+        subB: 'sub_4',
+        similarity: 98.4,
+        jaccard: 96.2,
+        astMatch: 98.4,
+        confidence: 'High Alert',
+        status: 'Flagged - Obfuscated Duplicate'
+    },
+    {
+        id: 'pair_2',
+        subA: 'sub_1',
+        subB: 'sub_6',
+        similarity: 91.5,
+        jaccard: 88.0,
+        astMatch: 92.1,
+        confidence: 'High Alert',
+        status: 'Flagged - Identical Loop Structure'
+    },
+    {
+        id: 'pair_3',
+        subA: 'sub_4',
+        subB: 'sub_6',
+        similarity: 89.8,
+        jaccard: 85.4,
+        astMatch: 90.2,
+        confidence: 'Medium Alert',
+        status: 'Candidate Pair'
+    }
+];
+
+let activeModalPair = candidatePairs[0];
+let currentGeminiMarkdownReport = "";
+
+let scene, camera, renderer, controls;
+let nodeMeshes = [];
+let edgeLines = [];
+let nodePulseAnimated = true;
+
+function init3DNetworkGraph() {
+    const container = document.getElementById('threejs-container');
+    if (!container) return;
+
+    // Clear existing canvas
+    container.innerHTML = '';
+
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x050609, 0.04);
+
+    camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(0, 4, 12);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxDistance = 25;
+    controls.minDistance = 3;
+
+    // Ambient & Point Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+
+    const yellowLight = new THREE.PointLight(0xfacc15, 3, 20);
+    yellowLight.position.set(5, 5, 5);
+    scene.add(yellowLight);
+
+    const blueLight = new THREE.PointLight(0x3b82f6, 2, 20);
+    blueLight.position.set(-5, -5, -5);
+    scene.add(blueLight);
+
+    // Build 3D Graph Nodes
+    buildGraphNodes();
+
+    // Raycaster for Node Clicking
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    container.addEventListener('click', (event) => {
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(nodeMeshes);
+
+        if (intersects.length > 0) {
+            const clickedMesh = intersects[0].object;
+            const subData = clickedMesh.userData;
+            highlightSelectedNode(subData);
+        }
+    });
+
+    // Animation Loop
+    function animate() {
+        requestAnimationFrame(animate);
+
+        controls.update();
+
+        // Node Pulse Animation
+        if (nodePulseAnimated) {
+            const time = Date.now() * 0.002;
+            nodeMeshes.forEach((mesh) => {
+                if (mesh.userData.isFlagged) {
+                    const scale = 1 + Math.sin(time + mesh.userData.idIndex) * 0.15;
+                    mesh.scale.set(scale, scale, scale);
+                }
+            });
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+        if (!container) return;
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+}
+
+function buildGraphNodes() {
+    nodeMeshes = [];
+    edgeLines = [];
+
+    // Node Positions Circle / Cluster Allocation
+    const count = submissionsPool.length;
+    const radius = 5.5;
+
+    submissionsPool.forEach((sub, i) => {
+        const angle = (i / count) * Math.PI * 2;
+        const x = Math.cos(angle) * radius + (Math.random() - 0.5) * 1.5;
+        const y = (Math.random() - 0.5) * 2.5;
+        const z = Math.sin(angle) * radius + (Math.random() - 0.5) * 1.5;
+
+        sub.position = { x, y, z };
+
+        // Check if node is part of a flagged pair
+        const isFlagged = candidatePairs.some(p => p.subA === sub.id || p.subB === sub.id);
+
+        const geo = new THREE.SphereGeometry(isFlagged ? 0.55 : 0.4, 32, 32);
+        const mat = new THREE.MeshStandardMaterial({
+            color: isFlagged ? 0xfacc15 : 0x3b82f6,
+            emissive: isFlagged ? 0x854d0e : 0x1e3a8a,
+            roughness: 0.3,
+            metalness: 0.8
+        });
+
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(x, y, z);
+        mesh.userData = { ...sub, isFlagged, idIndex: i };
+
+        scene.add(mesh);
+        nodeMeshes.push(mesh);
+    });
+
+    // Draw Candidate Edges
+    candidatePairs.forEach(pair => {
+        const subA = submissionsPool.find(s => s.id === pair.subA);
+        const subB = submissionsPool.find(s => s.id === pair.subB);
+
+        if (subA && subB && subA.position && subB.position) {
+            const points = [];
+            points.push(new THREE.Vector3(subA.position.x, subA.position.y, subA.position.z));
+            points.push(new THREE.Vector3(subB.position.x, subB.position.y, subB.position.z));
+
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMat = new THREE.LineDashedMaterial({
+                color: pair.similarity > 90 ? 0xfacc15 : 0x60a5fa,
+                dashSize: 0.3,
+                gapSize: 0.1,
+                linewidth: 2
+            });
+
+            const line = new THREE.Line(lineGeo, lineMat);
+            line.computeLineDistances();
+            scene.add(line);
+            edgeLines.push(line);
+        }
+    });
+}
+
+function resetCamera() {
+    if (controls) {
+        controls.reset();
+        camera.position.set(0, 4, 12);
+    }
+}
+
+function toggleNodePulse() {
+    nodePulseAnimated = !nodePulseAnimated;
+}
+
+function highlightSelectedNode(subData) {
+    const boxTitle = document.getElementById('nodeInfoTitle');
+    const boxScore = document.getElementById('nodeInfoScore');
+    const boxDesc = document.getElementById('nodeInfoDesc');
+
+    if (subData.isFlagged) {
+        const pair = candidatePairs.find(p => p.subA === subData.id || p.subB === subData.id);
+        boxTitle.innerText = `Flagged Node: ${subData.filename}`;
+        boxScore.innerText = pair ? `${pair.similarity}% Similarity` : 'Flagged';
+        boxScore.className = 'px-2 py-0.5 rounded bg-yellow-400/20 text-yellow-300 font-bold border border-yellow-400/40 text-[10px]';
+        boxDesc.innerHTML = `High AST structural similarity detected. Matches in pool with obfuscated identifiers or identical control paths.`;
+    } else {
+        boxTitle.innerText = `Clean Node: ${subData.filename}`;
+        boxScore.innerText = `0.0% Structural Match`;
+        boxScore.className = 'px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold border border-blue-500/40 text-[10px]';
+        boxDesc.innerHTML = `Submission passes all MinHash LSH and Gemini AST structural thresholds cleanly.`;
+    }
+}
+
+function switchView(viewName) {
+    document.getElementById('view-network').classList.add('hidden');
+    document.getElementById('view-ingestion').classList.add('hidden');
+    document.getElementById('view-forensics').classList.add('hidden');
+
+    document.getElementById('tab-btn-network').className = 'px-4 py-2 rounded-lg inactive-tab flex items-center gap-2 transition-all cursor-pointer';
+    document.getElementById('tab-btn-ingestion').className = 'px-4 py-2 rounded-lg inactive-tab flex items-center gap-2 transition-all cursor-pointer';
+    document.getElementById('tab-btn-forensics').className = 'px-4 py-2 rounded-lg inactive-tab flex items-center gap-2 transition-all cursor-pointer';
+
+    if (viewName === 'network') {
+        document.getElementById('view-network').classList.remove('hidden');
+        document.getElementById('tab-btn-network').className = 'px-4 py-2 rounded-lg active-tab flex items-center gap-2 transition-all cursor-pointer';
+        if (renderer) {
+            setTimeout(() => {
+                const container = document.getElementById('threejs-container');
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }, 50);
+        }
+    } else if (viewName === 'ingestion') {
+        document.getElementById('view-ingestion').classList.remove('hidden');
+        document.getElementById('tab-btn-ingestion').className = 'px-4 py-2 rounded-lg active-tab flex items-center gap-2 transition-all cursor-pointer';
+        renderIngestedTable();
+    } else if (viewName === 'forensics') {
+        document.getElementById('view-forensics').classList.remove('hidden');
+        document.getElementById('tab-btn-forensics').className = 'px-4 py-2 rounded-lg active-tab flex items-center gap-2 transition-all cursor-pointer';
+        populateForensicPairSelector();
+        loadSelectedForensicPair();
+    }
+}
+
+function selectPipelineStep(stepNum) {
+    const stageTitles = [
+        "Stage 0: Full Submission Ingestion Graph",
+        "Stage 1: AST Normalization & Comment Removal",
+        "Stage 2: Token Fingerprinting & K-Shingle Hashing",
+        "Stage 3: MinHash LSH Candidate Pair Filtering",
+        "Stage 4: AST Structural Tree Equivalence",
+        "Stage 5: ANN Vector Search & Embeddings",
+        "Stage 6: Multi-File Context Graph Mesh",
+        "Stage 7: Gemini AI LLM Semantic Verification",
+        "Stage 8: Academic Integrity Priority Risk Matrix",
+        "Stage 9: Tutor Executive Forensic Dashboard"
+    ];
+
+    document.getElementById('stageHudTitle').innerText = stageTitles[stepNum] || `Stage ${stepNum}`;
+
+    for (let i = 0; i <= 9; i++) {
+        const btn = document.getElementById(`step-btn-${i}`);
+        const bar = document.getElementById(`step-bar-${i}`);
+        if (i === stepNum) {
+            btn.className = "pipeline-step-btn p-1.5 rounded-xl bg-yellow-500/20 border border-yellow-400 text-yellow-400 hover:border-yellow-400 transition-all flex flex-col items-center justify-between gap-1 group cursor-pointer shadow-lg shadow-yellow-500/10";
+            bar.className = "bg-yellow-400 h-full w-full transition-all duration-300";
+        } else {
+            btn.className = "pipeline-step-btn p-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 hover:border-slate-700 transition-all flex flex-col items-center justify-between gap-1 group cursor-pointer";
+            bar.className = "bg-slate-600 h-full w-0 transition-all duration-300";
+        }
+    }
+}
+
+function updateThresholds() {
+    const lshVal = document.getElementById('threshLshInput').value;
+    const depthVal = document.getElementById('threshDepthInput').value;
+    document.getElementById('threshLshVal').innerText = `${lshVal}%`;
+    document.getElementById('threshDepthVal').innerText = `Level ${depthVal}`;
+}
+
+function triggerAnalysis() {
+    const btnText = document.getElementById('runBtnText');
+    btnText.innerText = "Computing AST Graphs...";
+    setTimeout(() => {
+        btnText.innerText = "Run Forensic Engine";
+        init3DNetworkGraph();
+        renderFlaggedPairs();
+    }, 600);
+}
+
+function renderIngestedTable() {
+    const tbody = document.getElementById('ingestedTableBody');
+    tbody.innerHTML = '';
+
+    submissionsPool.forEach(sub => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-900/50 transition-all";
+        tr.innerHTML = `
+            <td class="p-3 font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-file-code text-yellow-400"></i>
+                <span>${sub.filename}</span>
+            </td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[10px]">${sub.language}</span></td>
+            <td class="p-3 text-slate-300">${sub.tokens}</td>
+            <td class="p-3 text-slate-300">${sub.astNodes}</td>
+            <td class="p-3 text-right">
+                <button onclick="removeSubmission('${sub.id}')" class="p-1.5 text-slate-500 hover:text-red-400 transition-all cursor-pointer" title="Remove File">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('ingestionCountBadge').innerText = submissionsPool.length;
+    document.getElementById('statSubmissions').innerText = submissionsPool.length;
+}
+
+function removeSubmission(id) {
+    submissionsPool = submissionsPool.filter(s => s.id !== id);
+    renderIngestedTable();
+    init3DNetworkGraph();
+}
+
+function clearAllSubmissions() {
+    submissionsPool = [];
+    candidatePairs = [];
+    renderIngestedTable();
+    renderFlaggedPairs();
+    init3DNetworkGraph();
+}
+
+function handleFileUpload(e) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach(file => {
+        if (file.name.endsWith('.zip')) {
+            JSZip.loadAsync(file).then(zip => {
+                zip.forEach((relativePath, zipEntry) => {
+                    if (!zipEntry.dir && (zipEntry.name.endsWith('.py') || zipEntry.name.endsWith('.cpp') || zipEntry.name.endsWith('.js') || zipEntry.name.endsWith('.java'))) {
+                        zipEntry.async('string').then(content => {
+                            addFileToPool(zipEntry.name.split('/').pop(), content);
+                        });
+                    }
+                });
+            });
+        } else {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                addFileToPool(file.name, evt.target.result);
+            };
+            reader.readAsText(file);
+        }
+    });
+}
+
+function addFileToPool(filename, content) {
+    const ext = filename.split('.').pop().toLowerCase();
+    let lang = 'Python';
+    if (ext === 'cpp' || ext === 'hpp') lang = 'C++';
+    if (ext === 'js' || ext === 'ts') lang = 'JavaScript';
+    if (ext === 'java') lang = 'Java';
+
+    const newSub = {
+        id: 'sub_' + Date.now() + Math.floor(Math.random() * 100),
+        filename: filename,
+        language: lang,
+        tokens: content.split(/\s+/).length,
+        astNodes: Math.floor(content.split(/\s+/).length * 0.45),
+        code: content
+    };
+
+    submissionsPool.push(newSub);
+    renderIngestedTable();
+    init3DNetworkGraph();
+}
+
+function addManualSnippet() {
+    const filename = document.getElementById('newFileNameInput').value.trim() || 'snippet.py';
+    const code = document.getElementById('newCodeArea').value.trim();
+    if (!code) return;
+
+    addFileToPool(filename, code);
+    document.getElementById('newFileNameInput').value = '';
+    document.getElementById('newCodeArea').value = '';
+}
+
+function renderFlaggedPairs() {
+    const container = document.getElementById('flaggedPairsContainer');
+    container.innerHTML = '';
+
+    candidatePairs.forEach(pair => {
+        const subA = submissionsPool.find(s => s.id === pair.subA);
+        const subB = submissionsPool.find(s => s.id === pair.subB);
+
+        if (!subA || !subB) return;
+
+        const card = document.createElement('div');
+        card.className = "bg-slate-950 border border-slate-800 hover:border-yellow-500/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all";
+        card.innerHTML = `
+            <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-white code-font">${subA.filename}</span>
+                    <i class="fa-solid fa-arrows-left-right text-xs text-yellow-400"></i>
+                    <span class="text-xs font-bold text-white code-font">${subB.filename}</span>
+                </div>
+                <div class="flex items-center gap-3 text-[11px] text-slate-400">
+                    <span>${pair.status}</span>
+                    <span>•</span>
+                    <span class="code-font text-blue-400">Jaccard: ${pair.jaccard}%</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="px-2.5 py-1 rounded-lg bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 text-xs font-bold code-font">
+                    ${pair.similarity}% Match
+                </span>
+                <button onclick="openAstModal('${pair.id}')" class="px-3 py-1.5 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs transition-all cursor-pointer">
+                    Inspect Pair
+                </button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+
+    document.getElementById('flaggedCountBadge').innerText = candidatePairs.length;
+    document.getElementById('statFlagged').innerText = candidatePairs.length;
+    document.getElementById('statPairs').innerText = candidatePairs.length;
+}
+
+function populateForensicPairSelector() {
+    const sel = document.getElementById('forensicPairSelector');
+    sel.innerHTML = '';
+    candidatePairs.forEach(pair => {
+        const subA = submissionsPool.find(s => s.id === pair.subA);
+        const subB = submissionsPool.find(s => s.id === pair.subB);
+        if (subA && subB) {
+            const opt = document.createElement('option');
+            opt.value = pair.id;
+            opt.innerText = `${subA.filename} vs ${subB.filename} (${pair.similarity}%)`;
+            sel.appendChild(opt);
+        }
+    });
+}
+
+function loadSelectedForensicPair() {
+    const selVal = document.getElementById('forensicPairSelector').value;
+    const pair = candidatePairs.find(p => p.id === selVal) || candidatePairs[0];
+    if (!pair) return;
+
+    const subA = submissionsPool.find(s => s.id === pair.subA);
+    const subB = submissionsPool.find(s => s.id === pair.subB);
+
+    if (subA && subB) {
+        document.getElementById('forensicFileTitleA').innerText = subA.filename;
+        document.getElementById('forensicCodeA').innerText = subA.code;
+
+        document.getElementById('forensicFileTitleB').innerText = subB.filename;
+        document.getElementById('forensicCodeB').innerText = subB.code;
+
+        document.getElementById('metricJaccard').innerText = `${pair.jaccard}%`;
+        document.getElementById('metricAst').innerText = `${pair.astMatch}%`;
+        document.getElementById('metricGemini').innerText = pair.confidence;
+    }
+}
+
+function openAstModal(pairId) {
+    const pair = candidatePairs.find(p => p.id === pairId) || candidatePairs[0];
+    if (!pair) return;
+
+    activeModalPair = pair;
+
+    const subA = submissionsPool.find(s => s.id === pair.subA);
+    const subB = submissionsPool.find(s => s.id === pair.subB);
+
+    if (subA && subB) {
+        document.getElementById('modalPairBadge').innerText = `${subA.filename} vs ${subB.filename}`;
+        document.getElementById('fileNameA').innerText = subA.filename;
+        document.getElementById('codeViewA').innerText = subA.code;
+
+        document.getElementById('fileNameB').innerText = subB.filename;
+        document.getElementById('codeViewB').innerText = subB.code;
+
+        document.getElementById('geminiReportContainer').innerHTML = `
+            <div class="flex flex-col items-center justify-center py-6 text-center text-slate-400 space-y-2">
+                <i class="fa-solid fa-robot text-2xl text-slate-600"></i>
+                <p>Click <strong>"Generate Gemini Breakdown"</strong> to perform real-time forensic LLM AST comparison.</p>
+            </div>
+        `;
+
+        // Reset state for TTS and Infographic
+        currentGeminiMarkdownReport = "";
+        document.getElementById('ttsAudioBtn').disabled = true;
+        document.getElementById('ttsAudioBtn').className = "px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 text-xs font-semibold flex items-center gap-2 transition-all cursor-not-allowed";
+        document.getElementById('genInfographicBtn').disabled = true;
+        document.getElementById('genInfographicBtn').className = "px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 text-xs font-semibold flex items-center gap-2 transition-all cursor-not-allowed";
+        document.getElementById('infographicContainer').classList.add('hidden');
+    }
+
+    document.getElementById('astCompareModal').classList.remove('hidden');
+}
+
+function closeAstModal() {
+    document.getElementById('astCompareModal').classList.add('hidden');
+}
+
+async function runGeminiForensicAnalysis() {
+    const container = document.getElementById('geminiReportContainer');
+    const btn = document.getElementById('runGeminiReportBtn');
+
+    if (!activeModalPair) return;
+
+    const subA = submissionsPool.find(s => s.id === activeModalPair.subA);
+    const subB = submissionsPool.find(s => s.id === activeModalPair.subB);
+
+    if (!subA || !subB) return;
+
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Analyzing with Gemini...`;
+
+    container.innerHTML = `
+        <div class="flex items-center gap-3 p-4 bg-slate-900 rounded-xl text-yellow-400">
+            <i class="fa-solid fa-circle-notch animate-spin text-lg"></i>
+            <div>
+                <div class="font-bold">Querying Gemini 3 Flash Intelligence Model...</div>
+                <div class="text-[10px] text-slate-400">Extracting AST loop invariants, checking variable renaming maps, and calculating logic equivalence.</div>
+            </div>
+        </div>
+    `;
+
+    const systemPrompt = "You are a world-class code forensics and academic integrity AI analyst. Compare the provided Code Submission A and Code Submission B. Provide a concise, structured markdown report covering: 1. Structural AST Equivalence 2. Identified Variable Renaming / Obfuscation Map 3. Algorithmic Control Flow Comparison 4. Final Plagiarism Risk Rating (High/Medium/Low) with actionable guidance.";
+    
+    const userQuery = `Code Submission A (${subA.filename}):\n\`\`\`${subA.language}\n${subA.code}\n\`\`\`\n\nCode Submission B (${subB.filename}):\n\`\`\`${subB.language}\n${subB.code}\n\`\`\``;
+
+    const apiKey = ""; // Canvas runtime automatically supplies API Key
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+    const payload = {
+        contents: [{ parts: [{ text: userQuery }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] }
+    };
+
+    try {
+        let response = await fetchWithRetry(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (generatedText) {
+            currentGeminiMarkdownReport = generatedText;
+            container.innerHTML = formatMarkdownToHtml(generatedText);
+
+            // Enable TTS and Infographic buttons
+            document.getElementById('ttsAudioBtn').disabled = false;
+            document.getElementById('ttsAudioBtn').className = "px-3 py-1.5 rounded-lg bg-blue-900/60 hover:bg-blue-800 text-blue-300 border border-blue-500/40 text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-md";
+            
+            document.getElementById('genInfographicBtn').disabled = false;
+            document.getElementById('genInfographicBtn').className = "px-3 py-1.5 rounded-lg bg-amber-900/60 hover:bg-amber-800 text-amber-300 border border-amber-500/40 text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-md";
+        } else {
+            container.innerHTML = `<div class="p-3 text-red-400 bg-red-950/40 rounded-xl">Unable to generate report from Gemini API. Structure unexpected.</div>`;
+        }
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = `<div class="p-3 text-red-400 bg-red-950/40 rounded-xl">Error connecting to Gemini API: ${err.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-sparkles"></i><span>Generate Gemini Breakdown</span>`;
+    }
+}
+
+async function runGeminiAudioBriefing() {
+    const btn = document.getElementById('ttsAudioBtn');
+    const textSpan = document.getElementById('ttsBtnText');
+
+    if (!currentGeminiMarkdownReport) return;
+
+    btn.disabled = true;
+    textSpan.innerText = "Synthesizing Audio...";
+
+    // Clean markdown text for TTS readout summary
+    const cleanText = currentGeminiMarkdownReport
+        .replace(/[\#\*\`]/g, '')
+        .substring(0, 350);
+
+    const promptText = `Say clearly in a professional academic forensic tone: Code Integrity Forensic Briefing. ${cleanText}`;
+
+    const payload = {
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+                voiceConfig: {
+                    prebuiltVoiceConfig: { voiceName: "Puck" }
+                }
+            }
+        }
+    };
+
+    const apiKey = "";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+    try {
+        const response = await fetchWithRetry(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        const part = result?.candidates?.[0]?.content?.parts?.[0];
+        const audioDataBase64 = part?.inlineData?.data;
+        const mimeType = part?.inlineData?.mimeType || "";
+
+        if (audioDataBase64) {
+            let sampleRate = 24000;
+            const rateMatch = mimeType.match(/rate=(\d+)/);
+            if (rateMatch && rateMatch[1]) {
+                sampleRate = parseInt(rateMatch[1], 10);
+            }
+
+            const pcmData = base64ToArrayBuffer(audioDataBase64);
+            const pcm16 = new Int16Array(pcmData);
+            const wavBlob = pcmToWav(pcm16, sampleRate);
+            const audioUrl = URL.createObjectURL(wavBlob);
+
+            const audio = new Audio(audioUrl);
+            audio.play();
+
+            textSpan.innerText = "Playing Briefing...";
+            audio.onended = () => {
+                btn.disabled = false;
+                textSpan.innerText = "Listen Audio Briefing";
+            };
+        } else {
+            alert("No audio returned from Gemini TTS model.");
+            btn.disabled = false;
+            textSpan.innerText = "Listen Audio Briefing";
+        }
+    } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+        textSpan.innerText = "Listen Audio Briefing";
+    }
+}
+
+async function runGeminiInfographic() {
+    const btn = document.getElementById('genInfographicBtn');
+    const textSpan = document.getElementById('infoBtnText');
+    const container = document.getElementById('infographicContainer');
+    const wrapper = document.getElementById('infographicWrapper');
+
+    if (!activeModalPair) return;
+
+    const subA = submissionsPool.find(s => s.id === activeModalPair.subA);
+    const subB = submissionsPool.find(s => s.id === activeModalPair.subB);
+
+    btn.disabled = true;
+    textSpan.innerText = "Generating Diagram...";
+
+    container.classList.remove('hidden');
+    wrapper.innerHTML = `
+        <div class="flex items-center gap-3 p-4 text-amber-400 text-xs">
+            <i class="fa-solid fa-spinner animate-spin text-lg"></i>
+            <span>Creating visual AST dependency diagram using Gemini 3.1 Flash Image...</span>
+        </div>
+    `;
+
+    const userPrompt = `Create a high-tech cybersecurity vector diagram titled 'AST Forensics: ${subA.filename} vs ${subB.filename}'. Show code AST nodes connecting with yellow matching lines, variable obfuscation map, and a bold '98.4% SIMILARITY' badge on a dark sci-fi background. Include clear labels.`;
+
+    const apiKey = "";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`;
+
+    const payload = {
+        contents: [{
+            role: 'user',
+            parts: [{ text: userPrompt }]
+        }],
+        generationConfig: {
+            responseModalities: ['IMAGE'],
+            imageConfig: { aspectRatio: "16:9" }
+        }
+    };
+
+    try {
+        const response = await fetchWithRetry(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+
+        if (part && part.inlineData?.data) {
+            const imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            wrapper.innerHTML = `<img src="${imageUrl}" alt="Gemini Forensic Infographic" class="max-h-72 w-auto rounded-lg shadow-lg border border-slate-800 object-contain">`;
+            textSpan.innerText = "Visual Diagram Ready";
+        } else {
+            wrapper.innerHTML = `<span class="text-xs text-red-400">Failed to render visual diagram.</span>`;
+            textSpan.innerText = "Generate Visual Diagram";
+        }
+    } catch (err) {
+        console.error(err);
+        wrapper.innerHTML = `<span class="text-xs text-red-400">Error generating image: ${err.message}</span>`;
+        textSpan.innerText = "Generate Visual Diagram";
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function toggleAiDrawer() {
+    const drawer = document.getElementById('aiChatDrawer');
+    drawer.classList.toggle('translate-x-full');
+}
+
+function sendPresetPrompt(text) {
+    document.getElementById('chatInput').value = text;
+    handleChatSubmit(new Event('submit'));
+}
+
+async function handleChatSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('chatInput');
+    const msgText = input.value.trim();
+    if (!msgText) return;
+
+    input.value = '';
+    appendChatMessage('user', 'User', msgText);
+
+    const loadingId = appendChatMessage('system', 'Sentinel AI', '<i class="fa-solid fa-spinner animate-spin"></i> Thinking...');
+
+    const systemPrompt = "You are Sentinel AI, an elite Code Integrity and Academic Honor Code Forensic Assistant. You assist university professors and tutors with analyzing student code submissions, identifying plagiarism, explaining AST normalization, and drafting official inquiry letters.";
+
+    const apiKey = "";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+    const payload = {
+        contents: [{ parts: [{ text: msgText }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] }
+    };
+
+    try {
+        const response = await fetchWithRetry(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        const replyText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        const loadingElem = document.getElementById(loadingId);
+        if (loadingElem) {
+            loadingElem.innerHTML = `
+                <div class="font-bold text-yellow-400 flex items-center gap-1.5">
+                    <i class="fa-solid fa-robot"></i>
+                    <span>Sentinel AI</span>
+                </div>
+                <div class="leading-relaxed">${formatMarkdownToHtml(replyText || 'No response returned.')}</div>
+            `;
+        }
+    } catch (err) {
+        const loadingElem = document.getElementById(loadingId);
+        if (loadingElem) {
+            loadingElem.innerHTML = `<span class="text-red-400">Error: ${err.message}</span>`;
+        }
+    }
+}
+
+function appendChatMessage(role, name, content) {
+    const msgLog = document.getElementById('chatMessageLog');
+    const msgId = 'msg_' + Date.now() + Math.floor(Math.random() * 100);
+
+    const div = document.createElement('div');
+    div.id = msgId;
+
+    if (role === 'user') {
+        div.className = 'p-3 rounded-xl bg-blue-950/60 border border-blue-500/30 text-white space-y-1 ml-6';
+        div.innerHTML = `
+            <div class="font-bold text-blue-400 flex items-center gap-1.5 justify-end">
+                <span>You</span>
+                <i class="fa-solid fa-user"></i>
+            </div>
+            <p class="text-right">${escapeHtml(content)}</p>
+        `;
+    } else {
+        div.className = 'p-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 space-y-1 mr-6';
+        div.innerHTML = `
+            <div class="font-bold text-yellow-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-robot"></i>
+                <span>${name}</span>
+            </div>
+            <div>${content}</div>
+        `;
+    }
+
+    msgLog.appendChild(div);
+    msgLog.scrollTop = msgLog.scrollHeight;
+    return msgId;
+}
+
+/* Helper Utilities */
+async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const res = await fetch(url, options);
+            if (res.ok) return res;
+        } catch (err) {
+            if (i === retries - 1) throw err;
+        }
+        await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));
+    }
+    return fetch(url, options);
+}
+
+function formatMarkdownToHtml(text) {
+    if (!text) return '';
+    return text
+        .replace(/### (.*?)\n/g, '<h4 class="font-bold text-yellow-400 text-xs mt-3 mb-1">$1</h4>')
+        .replace(/## (.*?)\n/g, '<h3 class="font-bold text-white text-sm mt-3 mb-1">$1</h3>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em class="text-yellow-300">$1</em>')
+        .replace(/`([^`]+)`/g, '<code class="code-font bg-black px-1.5 py-0.5 rounded text-yellow-300 border border-slate-800">$1</code>')
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>');
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function base64ToArrayBuffer(base64) {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+}
+
+function pcmToWav(pcm16Data, sampleRate = 24000, numChannels = 1) {
+    const buffer = new ArrayBuffer(44 + pcm16Data.length * 2);
+    const view = new DataView(buffer);
+
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + pcm16Data.length * 2, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numChannels * 2, true);
+    view.setUint16(32, numChannels * 2, true);
+    view.setUint16(34, 16, true);
+    writeString(view, 36, 'data');
+    view.setUint32(40, pcm16Data.length * 2, true);
+
+    let offset = 44;
+    for (let i = 0; i < pcm16Data.length; i++, offset += 2) {
+        view.setInt16(offset, pcm16Data[i], true);
+    }
+
+    return new Blob([buffer], { type: 'audio/wav' });
+}
+
+function writeString(view, offset, string) {
+    for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+    }
+}
+
+/* On Window Load Setup */
+window.onload = function() {
+    init3DNetworkGraph();
+    renderFlaggedPairs();
+    renderIngestedTable();
+};
+</script>
+</body>
+</html>
